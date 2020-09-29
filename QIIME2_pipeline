@@ -1,0 +1,296 @@
+###########################################
+###	   Prepare environment 		###
+###########################################
+
+# activate qiime2
+source activate qiime2
+
+# Create a file for every run:
+
+mkdir Run7
+mkdir Run8
+mkdir Run9
+
+# Add in the respect folders the metadata of corresponding run with the following name and extension: 'metadata_run"$i".csv' with tabulator.
+
+cd /media/andrea/StorageExtE6T/Andrea_Projects/TFM_QIIME2/Run7
+cd /media/andrea/StorageExtE6T/Andrea_Projects/TFM_QIIME2/Run8
+cd /media/andrea/StorageExtE6T/Andrea_Projects/TFM_QIIME2/Run9
+
+# So, you need in every Run file, the metadata and the two fastq.gz files corresponding. If you don't have the .gz you can do it with: gzip *.fastq
+
+# Inspect metadata
+
+Runs=(5 7 8 9)
+
+for i in ${Runs[@]}
+do
+ echo "Inspect medata..."
+ qiime tools inspect-metadata Run"$i"/metadata_run"$i".csv
+done
+
+# change the names of the sequences and barcodes files (I1 are the barcodes and R1 the sequences) and put in the correct file depending of it's Runs.
+
+for i in ${Runs[@]}
+do
+
+ echo "Creating a directory in Run "$i" and changing names of fastq.gz files to "sequences" or "barcodes" files ... "
+
+ mkdir Run"$i"/emp-single-end-sequences
+ mv Run"$i"/Undetermined_S0_L001_I1_001.fastq.gz Run"$i"/emp-single-end-sequences/barcodes.fastq.gz
+ mv Run"$i"/Undetermined_S0_L001_R1_001.fastq.gz Run"$i"/emp-single-end-sequences/sequences.fastq.gz
+
+ echo "Done!"
+
+done
+
+# Once you have all data with the correct names and the correct files created you can start de demultiplexing...
+
+####################
+## Demultiplexing ##
+####################
+
+for i in ${Runs[@]}
+do 
+
+  echo "Import and demultiplexing Run "$i"..."
+
+  time qiime tools import --type EMPSingleEndSequences --input-path "Run"$i"/emp-single-end-sequences" --output-path "Run"$i"/emp-single-end-sequences_run"$i".qza"
+
+  time qiime demux emp-single --i-seqs "Run"$i"/emp-single-end-sequences_run"$i".qza" --m-barcodes-file "Run"$i"/metadata_run"$i".csv" --m-barcodes-column BarcodeSequence --p-rev-comp-mapping-barcodes --o-per-sample-sequences "Run"$i"/demux_run"$i".qza" --o-error-correction-details "Run"$i"/demux-details.qza"
+
+  time qiime demux summarize --i-data "Run"$i"/demux_run"$i".qza" --o-visualization "Run"$i"/demux_run"$i".qzv"
+
+  echo "Demultiplexing completed!"
+
+done
+
+#####################
+## Quality Control ##
+#####################
+
+# !!!! Value of --P-TRUNC-LEN = 283
+# take care of the number of threads: 'lscpu' in terminal to see the maximum number of CPUs that the computer has.
+
+for i in ${Runs[@]}
+do 
+
+  echo "Doing quality control in Run "$i"..." 
+
+  time qiime dada2 denoise-single --i-demultiplexed-seqs "Run"$i"/demux_run"$i".qza" --p-n-threads 10 --p-trim-left 0 --p-trunc-len 283 --o-representative-sequences "Run"$i"/rep-seqs-dada2_run"$i".qza" --o-table "Run"$i"/table-dada2_run"$i".qza" --o-denoising-stats "Run"$i"/stats-dada2_run"$i".qza"
+
+  echo "Making the vizualisation..."
+  time qiime metadata tabulate --m-input-file "Run"$i"/stats-dada2_run"$i".qza" --o-visualization "Run"$i"/stats-dada2_run"$i".qzv"
+
+done
+
+# Output artifacts:
+#    stats-dada2_run"$i".qza
+#    table-dada2_run"$i".qza
+#    rep-seqs-dada2_run"$i".qza
+
+# Output visualizations:
+#    stats-dada2.qzv
+
+
+# Before the merge you need to do the filtering of the metadata you want, separetely for each run:
+
+############################
+## RUN5 - filter samples ##
+############################
+
+qiime feature-table filter-samples --i-table "Run5/table-dada2_run5.qza" --m-metadata-file "Run5/metadata_run5.csv" --p-where "(TimePoint='Basal' AND SampleStatus='Healthy') OR Alias='SP208F' OR Alias='SP209F' OR Alias='SP210F' OR Alias='SP211F' OR Alias='SP203F'" --o-filtered-table "Run5/table-run5.qza"
+
+###########################
+## RUN7 - filter samples ##
+###########################
+
+qiime feature-table filter-samples --i-table "Run7/table-dada2_run7.qza" --m-metadata-file "Run7/metadata_run7.csv" --p-where "Description='Healthy_UC' OR Description='Patients_UC' OR Alias='Dia.158.12.20' OR Alias='Dia.158.16.20' OR Alias='Dia.210.06.12' OR Alias='Dia.210.12.20' OR Alias='SP203F' OR Alias='SP208F' OR Alias='SP209F' OR Alias='SP210F' OR Alias='SP211F'" --o-filtered-table "Run7/table-run7.qza"
+
+############################
+## RUN8 - filter samples ##
+############################
+
+qiime feature-table filter-samples --i-table "Run8/table-dada2_run8.qza" --m-metadata-file "Run8/metadata_run8.csv" --p-where "Description='Healthy_UC' OR Description='Healthy_CD' OR Description='Patients_UC' OR Description='Patients_CD' OR Alias='V1.FI.01' OR Alias='V1.FI.02' OR Alias='V1.FI.03' OR Alias='V1.FI.04' OR Alias='V1.FI.05' OR Alias='V1.FI.06' OR Alias='V1.FI.07' OR Alias='V1.FI.08' OR Alias='V1.FI.09' OR Alias='V1.FI.10'" --o-filtered-table "Run8/table-run8.qza"
+
+############################
+## RUN9 - filter samples ##
+############################
+
+qiime feature-table filter-samples --i-table "Run9/table-dada2_run9.qza" --m-metadata-file "Run9/metadata_run9.csv" --p-where "Description='Healthy_CD' OR Description='Patients_UC' OR Description='Patients_CD' OR Alias='Dia.158.12_20' OR Alias='Dia.210.12_20' OR Alias='Dia.210.6_12' OR Alias='Dia.158.16_20'" --o-filtered-table "Run9/table-run9.qza"
+
+# Output artifacts:
+#    Run"$i"/table-run"$i".qza
+
+
+####################
+## Feature tables ##
+####################
+
+for i in ${Runs[@]}
+do  
+ echo "Doing the Feature summarize and filter sequences in Run"$i"..."
+
+ time qiime feature-table summarize --i-table "Run"$i"/table-run"$i".qza" --o-visualization "Run"$i"/table-run"$i".qzv" --m-sample-metadata-file "Run"$i"/metadata_run"$i".csv"
+
+ time qiime feature-table filter-seqs --i-data "Run"$i"/rep-seqs-dada2_run"$i".qza" --i-table "Run"$i"/table-run"$i".qza" --o-filtered-data "Run"$i"/rep-seqs-run"$i".qza" 
+
+ time qiime feature-table tabulate-seqs --i-data "Run"$i"/rep-seqs-run"$i".qza" --o-visualization "Run"$i"/rep-seqs-run"$i".qzv"
+done
+
+#Output visualizations:
+#  table-run"$i".qzv
+#  rep-seqs-run"$i".qzv
+
+####################
+## Merge the runs ##
+####################
+
+qiime feature-table merge --i-tables "Run"${Runs[0]}"/table-run"${Runs[0]}".qza" --i-tables "Run"${Runs[1]}"/table-run"${Runs[1]}".qza" --i-tables "Run"${Runs[2]}"/table-run"${Runs[2]}".qza" --i-tables "Run"${Runs[3]}"/table-run"${Runs[3]}".qza" --o-merged-table table_runs_5_7_8_9.qza
+
+qiime feature-table merge-seqs --i-data "Run"${Runs[0]}"/rep-seqs-run"${Runs[0]}".qza" --i-data "Run"${Runs[1]}"/rep-seqs-run"${Runs[1]}".qza" --i-data "Run"${Runs[2]}"/rep-seqs-run"${Runs[2]}".qza" --i-data "Run"${Runs[3]}"/rep-seqs-run"${Runs[3]}".qza" --o-merged-data rep-seqs_runs_5_7_8_9.qza
+
+time qiime feature-table summarize --i-table table_runs_5_7_8_9.qza --o-visualization table_runs_5_7_8_9.qzv --m-sample-metadata-file metadata_runs_5_7_8_9.csv
+
+# From here, sample quality filtering will highly depend on your data. Usually, the cut-off parameters chosen are ASV with frequencies lower than 10 and in less than 5 samples,
+# and for samples, those with frequency lower than 1000.
+
+################################################
+## Tree for phylogenetic diversity analyses   ##
+################################################
+
+qiime feature-table tabulate-seqs --i-data rep-seqs_runs_5_7_8_9.qza --o-visualization rep-seqs_runs_5_7_8_9.qzv
+
+time qiime phylogeny align-to-tree-mafft-fasttree --i-sequences rep-seqs_runs_5_7_8_9.qza --p-n-threads 20 --o-alignment aligned-rep-seqs.qza --o-masked-alignment masked-aligned-rep-seqs.qza --o-tree unrooted-tree.qza --o-rooted-tree rooted-tree.qza
+
+##########################################
+## 	    Alpha-diversity 		##
+##########################################
+
+# At this step we use the metadata of the merging runs!! (So the name changes)
+
+time qiime diversity core-metrics-phylogenetic --i-phylogeny rooted-tree.qza --i-table table_runs_5_7_8_9.qza --p-sampling-depth 10346 --m-metadata-file metadata_runs_5_7_8_9.csv --output-dir core-metrics-results
+
+time qiime diversity alpha-group-significance --i-alpha-diversity core-metrics-results/faith_pd_vector.qza --m-metadata-file metadata_runs_5_7_8_9.csv --o-visualization core-metrics-results/faith-pd-group-significance.qzv
+
+time qiime diversity alpha-group-significance --i-alpha-diversity core-metrics-results/evenness_vector.qza --m-metadata-file metadata_runs_5_7_8_9.csv --o-visualization core-metrics-results/evenness-group-significance.qzv
+
+
+#############################
+## Alpha-diversity indexes ##
+#############################
+
+metrics=(observed_otus shannon chao1 simpson)
+
+for j in ${metrics[@]}
+do  
+
+ echo "Calculating alpha diversity in metrics "$j"..."
+ qiime diversity alpha --i-table table_runs_5_7_8_9.qza --p-metric "$j" --o-alpha-diversity ""$j"_vector.qza"
+ qiime diversity alpha-group-significance --i-alpha-diversity ""$j"_vector.qza" --m-metadata-file "metadata_runs_5_7_8_9.csv" --o-visualization ""$j"_vector.qzv"
+
+done
+
+###################################
+##     Beta-diversity 		 ##
+###################################
+
+Variables=(Group SampleStatus Median_Age Median_BMI Health_StatusRun)
+
+for e in ${Variables[@]}
+do 
+ qiime diversity beta-group-significance --i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza --m-metadata-file metadata_runs_5_7_8_9.csv --m-metadata-column "$e" --o-visualization "core-metrics-results/unweighted-unifrac-"$e"-significance.qzv" --p-pairwise
+done
+
+
+###########################################
+## 	  Alpha rarefaction plotting	 ##
+###########################################
+
+* --p-max-depth -> in table_allruns.qzv (by sampling depth). Minimum number of sequences per sample, by default it can be 1000.
+
+time qiime diversity alpha-rarefaction --i-table table_runs_5_7_8_9.qza --i-phylogeny rooted-tree.qza --p-max-depth 10346 --m-metadata-file metadata_runs_5_7_8_9.csv --o-visualization alpha-rarefaction.qzv
+
+qiime diversity alpha-rarefaction \
+  --i-table table_runs_5_7_8_9.qza \
+  --i-phylogeny rooted-tree.qza \
+  --p-max-depth 10346 \
+  --m-metadata-file metadata_runs_5_7_8_9.csv \
+  --o-visualization alpha-rarefaction.qzv
+
+
+###################################
+## 	 Taxonomic analysis	 ##
+###################################
+
+###### That we use ######
+
+## Extract reference reads
+
+qiime feature-classifier extract-reads --i-sequences gp_97_otus.qza --p-f-primer GTGCCAGCMGCCGCGGTAA --p-r-primer GGACTACHVGGGTWTCTAAT --p-trunc-len 283 --p-min-length 100 --p-max-length 400 --o-reads ref-seqs.qza
+
+## Train the classifier
+
+qiime feature-classifier fit-classifier-naive-bayes --i-reference-reads ref-seqs.qza --i-reference-taxonomy gp_97_tax.qza --o-classifier classifier.qza
+
+## Test the classifier 
+
+qiime feature-classifier classify-sklearn --i-classifier classifier.qza --i-reads rep-seqs_runs_5_7_8_9.qza --o-classification taxonomy.qza
+
+qiime metadata tabulate --m-input-file taxonomy.qza --o-visualization taxonomy.qzv
+
+qiime taxa barplot --i-table table_runs_5_7_8_9.qza --i-taxonomy taxonomy.qza --m-metadata-file metadata_runs_5_7_8_9.csv --o-visualization taxa-bar-plots-gp-97.qzv
+
+
+###############################################
+## Differential abundance testing with ANCOM ##
+############################################### 
+
+###### To obtain Relative and absolute tables : ######
+
+mkdir ancom
+
+qiime taxa collapse \
+--i-table table_runs_5_7_8_9.qza \
+--i-taxonomy taxonomy.qza \
+--p-level 4 \
+--o-collapsed-table "ancom/table-L6.qza"
+
+qiime composition add-pseudocount \
+--i-table "ancom/table-L6.qza" \
+--o-composition-table "ancom/comp-table-L4.qza"
+
+qiime feature-table relative-frequency \
+--i-table "ancom/table-L6.qza" \
+--o-relative-frequency-table "ancom/tablerelative-L4.qza"
+
+###### Test ANCOM
+
+##### Example: All groups at TP0
+
+qiime feature-table filter-samples \
+  --i-table table-L4.qza \
+  --m-metadata-file metadata_runs_5_7_8_9.csv \
+  --p-where "[TP]='TP0'" \
+  --o-filtered-table L4-tp0-allgroups-table.qza
+
+qiime composition add-pseudocount \
+  --i-table L4-tp0-allgroups-table.qza \
+  --o-composition-table L4-tp0-allgroups-comp-table.qza
+
+qiime composition ancom \
+  --i-table L4-tp0-allgroups-comp-table.qza \
+  --m-metadata-file metadata_runs_5_7_8_9.csv \
+  --m-metadata-column Group \
+  --o-visualization ancom-L4-tp0-groups.qzv
+
+
+##############################
+## To obtain the otu tables ##
+##############################
+
+mkdir exportedL7
+
+qiime tools extract --input-path "ancom/comp-table-L6.qza" --output-path exportedL6
+
+biom convert -i feature-table.biom -o "table-L6.tsv" --to-tsv
