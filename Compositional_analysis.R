@@ -320,7 +320,46 @@ ggsave(file="PCOAS.png", pcoas, height=14, width=18, units="in")
 ## COMPOSITIONAL ANALYSIS ##
 ############################
 
-# Webpage: https://rpubs.com/lgschaerer/515637
+# Re-read the data to take only the significant genus obtained from the ANCOM results:
+
+otu <- as.data.frame(read_excel("table-L6.xlsx")) # otu table in terms of absolute frequency L6 - Genus level
+head(otu)
+rownames(otu) <- otu[,1]
+otu <- otu[,-1]
+
+ancom_L6 <- as.data.frame(read_excel("ancom_L6_results.xlsx")) # otu table in terms of absolute frequency L6 - Genus level
+head(ancom_L6)
+ancom_L6$Reject_null_hypothesis <- as.factor(ancom_L6$Reject_null_hypothesis)
+signif <- subset(ancom_L6, ancom_L6$Reject_null_hypothesis=="True")
+
+# Select only the significant otus (results from ANCOM)
+otu_signif <- subset(otu, rownames(otu) %in% signif$Otu)
+
+otu <- otu_signif
+tax <- rbind(unlist(strsplit(rownames(otu)[1], "[;]"))) # to create taxonomy table
+for(i in 2:nrow(otu)){
+  tax <- rbind(tax, unlist(strsplit(rownames(otu)[i], "[;]")))
+}
+taxonomy_L6 <- as.data.frame(tax)
+colnames(taxonomy_L6) <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus")
+rownames(otu) <- 1:nrow(otu)
+dim(otu)
+rownames(otu) <- paste0("otu_0", rownames(otu))
+rownames(taxonomy_L6) <- paste0("otu_0", rownames(taxonomy_L6))
+matches <- rownames(metadata)
+otus <- otu[, as.character(matches)]
+rownames(otus) <- rownames(taxonomy_L6)
+
+OTU.physeq = otu_table(as.matrix(otus), taxa_are_rows=TRUE)
+tax.physeq = tax_table(as.matrix(taxonomy_L6))
+meta.physeq = sample_data(metadata) # rownames de metadata han de ser l'ID dels pacients
+physeq.alpha = phyloseq(OTU.physeq, tax.physeq, meta.physeq)
+physeq.alpha
+
+newmeta1 <- subset(metadata, metadata$Timepoint=="TP0")
+meta.physeq1 = sample_data(newmeta1) # rownames de metadata han de ser l'ID dels pacients
+physeq.alpha1 = phyloseq(OTU.physeq, tax.physeq, meta.physeq1)
+
 
 # The subsequent data used (physeq.alpha1) is only for individuals at TP0.
 # Subset only bacterias:
@@ -390,6 +429,13 @@ ggplot(all) +
 #### Figure 3.15: Healthy controls and IBD subgroups #### 
 #########################################################
 
+head(otu_signif)
+newdf <- as.data.frame(t(otu_signif))
+newdf$ID <- rownames(newdf)
+library(dplyr)
+library(reshape)
+df = merge(x=newdf,y=metadata,by="ID")
+dim(df)
 
 ##################################################
 ######## A) BOXPLOT TP0 FOR IBD vs HEALTHY ####### 
@@ -432,14 +478,6 @@ print(p3)
 ##################################################
 ######## B) BOXPLOT TP0 FOR CD vs HEALTHY ######## 
 ##################################################
-
-head(otu_signif)
-newdf <- as.data.frame(t(otu_signif))
-newdf$ID <- rownames(newdf)
-library(dplyr)
-library(reshape)
-df = merge(x=newdf,y=metadata,by="ID")
-dim(df)
 
 tp0_cd_healthy <- subset(df, (df$Timepoint=="TP0" & (df$Group=="CD" | df$Group=="CD_RL" | df$Group=="Healthy")))
 tp0_cd_healthy$CD_HEALTHY <- ifelse(tp0_cd_healthy$Group=="Healthy", "Healthy", "CD")
@@ -523,5 +561,5 @@ print(p4)
 boxplots <-ggarrange(p3, p1, p2, p4 ,
                      labels = c("A", "B", "C", "D"),
                      ncol = 2, nrow = 2)
-ggsave(file="boxplots.png", boxplots, height=12, width=14, units="in")
+# ggsave(file="boxplots.png", boxplots, height=12, width=14, units="in")
 
