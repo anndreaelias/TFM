@@ -4,7 +4,6 @@
 ######################
 ######################
 
-
 ##############################
 #### 1) Required packages ####
 ##############################
@@ -27,8 +26,7 @@ devtools::install_github("kassambara/ggpubr")
 
 source("read_ddbb.R") # for the metadata
 
-# Otu table and taxonomy table:
-
+# Otu table and taxonomy:
 otu <- as.data.frame(read_excel("table-L6.xlsx")) # otu table in terms of absolute frequency L6 - Genus level
 head(otu)
 rownames(otu) <- otu[,1]
@@ -65,13 +63,14 @@ phylum_colors <- c("#CBD588", "#5F7FC7", "orange","#DA5724", "#508578", "#CD9BCD
 ######## The following plots are in level L6: Genus
 
 ############################################################ 
-# Figure 3.11: Alpha-diversity indexes in different groups #
+# Figure 3.10: Alpha-diversity indexes in different groups #
 ############################################################
 
 newmeta1 <- subset(metadata, ((metadata$t0_tfinal=="Initial" & (metadata$Group=="Healthy"| metadata$Group=="HR_UC" | metadata$Group=="HR_CD")) |
                                 metadata$t0_tfinal=="Final" & (metadata$Group=="CD" | metadata$Group=="CD_RL" | 
                                                                  metadata$Group=="UC" | metadata$Group=="UC_RL"
                                 )))
+
 newmeta1$Group <- factor(newmeta1$Group, levels=c("CD", "CD_RL", "HR_CD", "Healthy", "HR_UC", "UC_RL", "UC"))
 meta.physeq1 = sample_data(newmeta1) # rownames de metadata han de ser el ID de los pacientes
 physeq.alpha1 = phyloseq(OTU.physeq, tax.physeq, meta.physeq1)
@@ -127,7 +126,7 @@ allgroups <-ggarrange(shannon_allgroups, chao1_allgroups,
 #ggsave(file="shannon_chao1_allgroups.png", allgroups, height=4, width=8)
 
 ####################################################################
-# Figure 3.12: Shannon index over time in CD Relapse and remission #
+# Figure 3.11: Shannon index over time in CD Relapse and remission #
 ####################################################################
 
 ### CD Remission ###
@@ -148,6 +147,7 @@ shannon_cd_rem <- plot_richness(physeq.alpha1, x="Timepoint", measures="Shannon"
   #                              c("TP0", "TP3"), c("TP1","TP2"), c("TP1", "TP3"), c("TP1", "TP4")),
   #          map_signif_level=TRUE, 
   #         y_position=c(3.4, 3.7, 4.0, 4.2, 4.2, 4.5, 4.8), test = "wilcox.test") + # wilcox.test es el test por defecto
+  #y_position=c(70, 73, 75, 77, 79, 80, 80.5), test = "wilcox.test") + # wilcox.test es el test por defecto
   theme(axis.text =  element_text( face = "bold")) + 
   theme(axis.text.y = element_text(size=9)) 
 # No se han encontrado diferencias significativas entre los diferentes grupos
@@ -186,7 +186,7 @@ shannon_tp_cd <-ggarrange(shannon_cd_rem, shannon_cd_rel,
 #ggsave(file="shannon_tp_cd.png", shannon_tp_cd, height=4, width=8, units="in")
 
 ####################################################################
-# Figure 3.13: Shannon index over time in UC Relapse and remission #
+# Figure 3.12: Shannon index over time in UC Relapse and remission #
 ####################################################################
 
 ### UC Remission ###
@@ -207,8 +207,10 @@ shannon_uc_rem <- plot_richness(physeq.alpha1, x="Timepoint", measures="Shannon"
   #                              c("TP0", "TP3"), c("TP1","TP2"), c("TP1", "TP3"), c("TP1", "TP4")),
   #          map_signif_level=TRUE, 
   #         y_position=c(3.4, 3.7, 4.0, 4.2, 4.2, 4.5, 4.8), test = "wilcox.test") + # wilcox.test es el test por defecto
+  #y_position=c(70, 73, 75, 77, 79, 80, 80.5), test = "wilcox.test") + # wilcox.test es el test por defecto
   theme(axis.text =  element_text( face = "bold")) + 
   theme(axis.text.y = element_text(size=9)) 
+# No se han encontrado diferencias significativas entre los diferentes grupos
 print(shannon_uc_rem)
 #dev.off()
 
@@ -234,15 +236,15 @@ shannon_uc_rel <- plot_richness(physeq.alpha1, x="Timepoint", measures="Shannon"
   theme(axis.text =  element_text( face = "bold")) + 
   theme(axis.text.y = element_text(size=9)) 
 print(shannon_uc_rel)
+# No se han encontrado diferencias significativas entre los diferentes grupos
 #dev.off()
-
 shannon_tp_uc <-ggarrange(shannon_uc_rem, shannon_uc_rel, 
                           labels = c("A", "B"),
                           ncol = 2, nrow = 1)
 #ggsave(file="shannon_tp_uc.png", shannon_tp_uc, height=4, width=8, units="in")
 
 ###########################################
-# Figure 3.14: PCoA's in different groups #
+# Figure 3.13: PCoA's in different groups #
 ###########################################
 
 newmeta1 <- subset(metadata, metadata$Timepoint=="TP0")
@@ -308,7 +310,6 @@ pcoa3 <- plot_ordination(physeq.sub, dist.ord, type="samples", color="Group") +
   theme(legend.text = element_text(size=22, face="bold")) 
 print(pcoa3)
 #dev.off()
-
 pcoas <-ggarrange(pcoa1, pcoa2, pcoa3, 
                   labels = c("A", "B", "C"),
                   ncol = 2, nrow = 2)
@@ -335,7 +336,7 @@ justbacteria <- physeq.alpha1 %>%
 justbacteria
 
 #################################################
-#### Figures 3.15: Genus level in all groups ####
+#### Figures 3.14: Genus level in all groups ####
 #################################################
 
 genusabundance <- justbacteria %>%
@@ -386,12 +387,13 @@ ggplot(all) +
 #dev.off()
 
 #########################################################
-#### Figure 3.16: Healthy controls and IBD subgroups #### 
+#### Figure 3.15: Healthy controls and IBD subgroups #### 
 #########################################################
 
-###############################################
-######## BOXPLOT TP0 FOR IBD vs HEALTHY ####### 
-###############################################
+
+##################################################
+######## A) BOXPLOT TP0 FOR IBD vs HEALTHY ####### 
+##################################################
 
 tp0_ibd_healthy <- subset(df, (df$Timepoint=="TP0" & (df$Group=="UC" | df$Group=="CD" | df$Group=="CD_RL" | df$Group=="UC_RL" |
                                                         df$Group=="Healthy")))
@@ -427,9 +429,9 @@ p3 <- ggplot(melt(tp0_ibd_healthy), aes(x = variable, y = value, fill=IBD_HEALTH
 print(p3)
 #dev.off()
 
-###############################################
-######## BOXPLOT TP0 FOR CD vs HEALTHY ######## 
-###############################################
+##################################################
+######## B) BOXPLOT TP0 FOR CD vs HEALTHY ######## 
+##################################################
 
 head(otu_signif)
 newdf <- as.data.frame(t(otu_signif))
@@ -464,9 +466,9 @@ p1 <- ggplot(melt(tp0_cd_healthy), aes(x = variable, y = value, fill=CD_HEALTHY)
 print(p1)
 #dev.off()
 
-###############################################
-######## BOXPLOT TP0 FOR UC vs HEALTHY ######## 
-###############################################
+##################################################
+######## C) BOXPLOT TP0 FOR UC vs HEALTHY ######## 
+##################################################
 
 tp0_uc_healthy <- subset(df, (df$Timepoint=="TP0" & (df$Group=="UC" | df$Group=="UC_RL" | df$Group=="Healthy")))
 tp0_uc_healthy$UC_HEALTHY <- ifelse(tp0_uc_healthy$Group=="Healthy", "Healthy", "UC")
@@ -487,9 +489,9 @@ p2 <- ggplot(melt(tp0_uc_healthy), aes(x = variable, y = value, fill=UC_HEALTHY)
 print(p2)
 #dev.off()
 
-#########################################
-######## BOXPLOT TP0 FOR UC vs CD ####### 
-#########################################
+############################################
+######## D) BOXPLOT TP0 FOR UC vs CD ####### 
+############################################
 
 tp0_cd_uc <- subset(df, (df$Timepoint=="TP0" & (df$Group=="UC" | df$Group=="CD" | df$Group=="CD_RL" | df$Group=="UC_RL")))
 tp0_cd_uc$Group <- factor(tp0_cd_uc$Group)
@@ -518,7 +520,6 @@ p4 <- ggplot(melt(tp0_cd_uc), aes(x = variable, y = value, fill=Group)) +
 print(p4)
 #dev.off()
 
-#### Save all plots: 
 boxplots <-ggarrange(p3, p1, p2, p4 ,
                      labels = c("A", "B", "C", "D"),
                      ncol = 2, nrow = 2)
